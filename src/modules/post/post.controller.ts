@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { createPost } from "./post.service";
+import db from "@/shared/config/prisma";
 
 export async function postPost(req: Request, res: Response) {
   const { content } = req.body;
@@ -17,12 +18,50 @@ export async function postPost(req: Request, res: Response) {
   return;
 }
 
+export async function deletePost(req: Request, res: Response) {
+  const user = (req as any).user;
+  const postId = req.params.postId;
+
+  const result = await db.post.delete({
+    where: {
+      id: postId,
+      author_id: user.id,
+    },
+  });
+
+  res.status(200).json(result);
+}
+
+export async function getPostsByAuthor(req: Request, res: Response) {
+  const authorId = req.params.authorId;
+
+  const result = await db.post.findMany({
+    where: {
+      author_id: authorId,
+    },
+  });
+
+  res.status(200).json(result);
+}
+
 export async function getPostsFromFollowing(req: Request, res: Response) {
   const user = (req as any).user;
 
-  res.status(200).json({
-    message: "Get posts from friends",
-    user,
+  const followedIds = await db.following.findMany({
+    select: {
+      followedId: true,
+    },
+    where: {
+      followerId: user.id,
+    },
   });
+
+  const followedPosts = await db.post.findMany({
+    where: {
+      author_id: { in: followedIds.map((item) => item.followedId) },
+    },
+  });
+
+  res.status(200).json(followedPosts);
   return;
 }

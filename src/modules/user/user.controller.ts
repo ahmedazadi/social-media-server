@@ -73,6 +73,7 @@ export async function getFollowers(req: Request, res: Response) {
     include: {
       follower: {
         select: {
+          id: true,
           username: true,
         },
       },
@@ -102,6 +103,7 @@ export async function getFollowing(req: Request, res: Response) {
     include: {
       followed: {
         select: {
+          id: true,
           username: true,
         },
       },
