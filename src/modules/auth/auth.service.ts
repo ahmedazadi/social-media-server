@@ -32,13 +32,20 @@ export async function handleLogin(req: Request, res: Response) {
   }
 
   // generate a token
-  const token = jwt.sign({ id: user.id }, env.ACCESS_TOKEN_SECRET!, {
-    expiresIn: "1d",
-  });
+  const token = jwt.sign(
+    { id: user.id, username: user.username },
+    env.ACCESS_TOKEN_SECRET!,
+    {
+      expiresIn: "1d",
+    }
+  );
 
   return res
     .status(200)
-    .json({ user: { email: user.email, username: user.username }, token });
+    .json({
+      user: { id: user.id, email: user.email, username: user.username },
+      token,
+    });
 }
 
 export async function handleRegister(req: Request, res: Response) {

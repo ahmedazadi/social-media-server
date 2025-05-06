@@ -7,7 +7,6 @@ export function login(req: Request, res: Response) {
 }
 
 export async function register(req: Request, res: Response) {
-  console.log("register");
   await handleRegister(req, res);
   return;
 }

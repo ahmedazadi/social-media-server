@@ -28,11 +28,26 @@ model User {
   // 2: Inactive
   // 3: Deleted
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
   Post      Post[]
+  followers Following[] @relation("follower")
+  following Following[] @relation("followed")
 
   @@index([email, phone, username])
+}
+
+model Following {
+  followerId String
+  follower   User   @relation("follower", fields: [followerId], references: [id])
+
+  followedId String
+  followed   User   @relation("followed", fields: [followedId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@id([followerId, followedId])
+  @@index([followerId, followedId])
 }
 
 model Post {
