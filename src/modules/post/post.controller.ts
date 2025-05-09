@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { createPost } from "./post.service";
+import * as postService from "./post.service";
 import db from "@/shared/config/prisma";
 
 export async function postPost(req: Request, res: Response) {
@@ -12,9 +12,9 @@ export async function postPost(req: Request, res: Response) {
 
   const user = (req as any).user;
 
-  const post = await createPost(content, user.id);
+  const post = await postService.createPost(content, user.id);
 
-  res.status(200).json(post);
+  res.status(200).json({ data: post });
   return;
 }
 
@@ -29,39 +29,27 @@ export async function deletePost(req: Request, res: Response) {
     },
   });
 
-  res.status(200).json(result);
+  res.status(200).json({ data: result });
 }
 
 export async function getPostsByAuthor(req: Request, res: Response) {
   const authorId = req.params.authorId;
-
-  const result = await db.post.findMany({
-    where: {
-      author_id: authorId,
-    },
-  });
-
-  res.status(200).json(result);
+  const result = await postService.getPostsByAuthor(authorId);
+  res.status(200).json({ data: result });
 }
 
 export async function getPostsFromFollowing(req: Request, res: Response) {
   const user = (req as any).user;
 
-  const followedIds = await db.following.findMany({
-    select: {
-      followedId: true,
-    },
-    where: {
-      followerId: user.id,
-    },
-  });
+  const data = await postService.getPostsFromFollowing(user.id);
 
-  const followedPosts = await db.post.findMany({
-    where: {
-      author_id: { in: followedIds.map((item) => item.followedId) },
-    },
-  });
-
-  res.status(200).json(followedPosts);
+  res.status(200).json({ data });
   return;
+}
+export async function getPostById(req: Request, res: Response) {
+  const postId = req.params.postId;
+
+  const post = await postService.getPostById(postId);
+
+  res.status(200).json({ data: post });
 }

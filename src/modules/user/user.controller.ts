@@ -27,7 +27,6 @@ export async function followUser(req: Request, res: Response) {
 }
 
 export async function unfollowUser(req: Request, res: Response) {
-  console.log("here");
   const user = (req as any).user;
   const followerId = user.id;
   const followedId = req.params.userId;
