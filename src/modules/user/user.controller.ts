@@ -1,6 +1,7 @@
 import db, { enums } from "@/shared/config/prisma";
 import { Gender } from "@/shared/types";
 import { Request, Response } from "express";
+import * as userService from "./user.service";
 
 export async function followUser(req: Request, res: Response) {
   const user = (req as any).user;
@@ -12,19 +13,18 @@ export async function followUser(req: Request, res: Response) {
     return;
   }
 
-  const result = await db.following.create({
-    data: {
-      followerId: followerId,
-      followedId: followedId,
-    },
-    include: {
-      followed: { select: { username: true } },
-      follower: { select: { username: true } },
-    },
-  });
-
-  res.json(result);
-  return;
+  try {
+    const result = await userService.followUser({
+      follower: followerId,
+      followed: followedId,
+    });
+    res.status(201).json(result);
+    return;
+  } catch (error: any) {
+    console.log(error.message);
+    res.status(500).json({ message: "Internal server error" });
+    return;
+  }
 }
 
 export async function unfollowUser(req: Request, res: Response) {
@@ -37,21 +37,18 @@ export async function unfollowUser(req: Request, res: Response) {
     return;
   }
 
-  const result = await db.following.delete({
-    where: {
-      followerId_followedId: {
-        followedId,
-        followerId,
-      },
-    },
-    include: {
-      followed: { select: { username: true } },
-      follower: { select: { username: true } },
-    },
-  });
-
-  res.json(result);
-  return;
+  try {
+    const result = await userService.unfollowUser({
+      follower: followerId,
+      followed: followedId,
+    });
+    res.status(200).json(result);
+    return;
+  } catch (error: any) {
+    console.log(error.message);
+    res.status(500).json({ message: "Internal server error" });
+    return;
+  }
 }
 
 export async function getFollowers(req: Request, res: Response) {
@@ -61,27 +58,15 @@ export async function getFollowers(req: Request, res: Response) {
     res.status(400).json({ message: "Please provide the necessary data" });
     return;
   }
-
-  const result = await db.following.findMany({
-    where: {
-      followedId: userId,
-    },
-    omit: {
-      followerId: true,
-      followedId: true,
-    },
-    include: {
-      follower: {
-        select: {
-          id: true,
-          username: true,
-        },
-      },
-    },
-  });
-
-  res.status(200).json(result);
-  return;
+  try {
+    const result = await userService.getFollowers({ userId });
+    res.status(200).json(result);
+    return;
+  } catch (error: any) {
+    console.log(error.message);
+    res.status(500).json({ message: "Internal server error" });
+    return;
+  }
 }
 
 export async function getFollowing(req: Request, res: Response) {
@@ -92,26 +77,15 @@ export async function getFollowing(req: Request, res: Response) {
     return;
   }
 
-  const result = await db.following.findMany({
-    where: {
-      followerId: userId,
-    },
-    omit: {
-      followerId: true,
-      followedId: true,
-    },
-    include: {
-      followed: {
-        select: {
-          id: true,
-          username: true,
-        },
-      },
-    },
-  });
-
-  res.status(200).json(result);
-  return;
+  try {
+    const result = await userService.getFollowing({ userId });
+    res.status(200).json(result);
+    return;
+  } catch (error: any) {
+    console.log(error.message);
+    res.status(500).json({ message: "Internal server error" });
+    return;
+  }
 }
 
 export async function postProfile(req: Request, res: Response) {
@@ -137,15 +111,13 @@ export async function postProfile(req: Request, res: Response) {
   }
 
   try {
-    const result = await db.profile.create({
-      data: {
-        id: user.id,
-        display_name: displayName,
-        profile_picture: profilePicture,
-        bio: bio,
-        gender: enums.gender[gender as Gender],
-        date_of_birth: dateOfBirthValidated,
-      },
+    const result = await userService.postProfile({
+      id: user.id,
+      displayName,
+      profilePicture,
+      bio,
+      gender,
+      dateOfBirth: dateOfBirthValidated.toISOString(),
     });
     res.status(201).json({ data: result });
     return;
@@ -160,29 +132,13 @@ export async function getProfile(req: Request, res: Response) {
   const user = (req as any).user;
 
   try {
-    const result = await db.user.findUnique({
-      where: {
-        id: user.id,
-      },
-      omit: {
-        password: true,
-      },
-      include: {
-        Profile: {
-          select: {
-            display_name: true,
-            profile_picture: true,
-            bio: true,
-            gender: true,
-            date_of_birth: true,
-          },
-        },
-      },
-    });
+    const result = await userService.getProfile({ id: user.id });
     res.status(200).json({ data: result });
     return;
   } catch (error: any) {
     console.log(error.message);
+    res.status(500).json({ message: "Internal server error" });
+    return;
   }
 }
 
@@ -209,17 +165,13 @@ export async function putProfile(req: Request, res: Response) {
   }
 
   try {
-    const result = await db.profile.update({
-      where: {
-        id: user.id,
-      },
-      data: {
-        display_name: displayName,
-        profile_picture: profilePicture,
-        bio: bio,
-        gender: enums.gender[gender as Gender],
-        date_of_birth: dateOfBirthValidated,
-      },
+    const result = await userService.putProfile({
+      id: user.id,
+      displayName,
+      profilePicture,
+      bio,
+      gender,
+      dateOfBirth: dateOfBirthValidated.toISOString(),
     });
     res.status(200).json({ data: result });
     return;
