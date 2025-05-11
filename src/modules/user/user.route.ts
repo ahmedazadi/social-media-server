@@ -28,4 +28,13 @@ router.get(
   userController.getFollowing
 );
 
+// post profile
+router.post("/profile", authenticateToken, userController.postProfile);
+
+// get user profile
+router.get("/profile", authenticateToken, userController.getProfile);
+
+// edit user profiel
+router.put("/profile", authenticateToken, userController.putProfile);
+
 export default router;

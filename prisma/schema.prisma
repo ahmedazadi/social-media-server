@@ -35,8 +35,24 @@ model User {
   following Following[] @relation("followed")
   PostLiked PostLiked[]
   Comment   Comment[]
+  Profile   Profile?    @relation()
 
   @@index([email, phone, username])
+}
+
+model Profile {
+  id   String @id @unique
+  user User   @relation(fields: [id], references: [id])
+
+  display_name    String?
+  profile_picture String?
+  bio             String?
+  gender          Int
+  // 1: male
+  // 2: female
+  date_of_birth   DateTime
+
+  @@index([id])
 }
 
 model Following {
@@ -66,6 +82,7 @@ model Post {
   // 5: Archived
   PostLiked PostLiked[]
   Comment   Comment[]
+  PostImage String?
 
   @@index([author_id])
 }
