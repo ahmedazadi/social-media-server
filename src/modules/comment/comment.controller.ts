@@ -2,8 +2,9 @@ import { Request, Response } from "express";
 import * as commentService from "./comment.service";
 
 export async function createComment(req: Request, res: Response) {
-  const { content, postId } = req.body;
+  const { content } = req.body;
   const user = (req as any).user;
+  const postId = req.params.postId;
 
   const comment = await commentService.createComment(content, postId, user.id);
   if (!comment) {
