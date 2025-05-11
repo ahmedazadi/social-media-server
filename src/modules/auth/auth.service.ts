@@ -13,12 +13,15 @@ export async function handleLogin(req: Request, res: Response) {
     return;
   }
 
+  console.log("validated");
+
   // check if the user exists
   let user: User | null = null;
   try {
-    user = await db.$queryRaw`
+    const [result]: any = await db.$queryRaw`
     SELECT * FROM "User" WHERE "email" = ${email}
-    `;
+  `;
+    user = result;
   } catch (error) {
     console.log(error);
     res.status(500).json({ error: "Internal server error" });

@@ -1,46 +1,147 @@
 import db from "@/shared/config/prisma";
+import { randomUUID } from "crypto";
 
+// Create a post
 export async function createPost(content: string, author_id: string) {
-  const post = await db.post.create({
-    data: { content, author_id },
-  });
-
+  const [post]: any = await db.$queryRaw`
+    INSERT INTO "Post" (
+      "id", "content", "author_id", "createdAt", "updatedAt", "publicity"
+    ) VALUES (
+      ${randomUUID()}, ${content}, ${author_id}, NOW(), NOW(), 1
+    )
+    RETURNING *
+  `;
   return post;
 }
 
+// Get post by ID including author info and like count
 export async function getPostById(id: string) {
-  const post = await db.post.findUnique({
-    where: { id },
-  });
+  const [post]: any = await db.$queryRaw`
+    SELECT 
+      p.*,
+      u."id" as "authorId",
+      u."username",
+      pr."display_name",
+      pr."profile_picture",
+      COUNT(pl."post_id") AS "likeCount"
+    FROM "Post" p
+    JOIN "User" u ON u."id" = p."author_id"
+    LEFT JOIN "Profile" pr ON pr."id" = u."id"
+    LEFT JOIN "PostLiked" pl ON pl."post_id" = p."id"
+    WHERE p."id" = ${id}
+    GROUP BY p."id", u."id", pr."display_name", pr."profile_picture"
+  `;
+
+  if (post) {
+    post.likeCount = Number(post.likeCount);
+  }
 
   return post;
 }
 
-export async function getPosts() {
-  const posts = await db.post.findMany();
-
-  return posts;
-}
-
+// Get all posts by a specific author including author info and like counts
 export async function getPostsByAuthor(author_id: string) {
-  const posts = await db.post.findMany({
-    where: { author_id },
-  });
+  const posts: any[] = await db.$queryRaw`
+    SELECT 
+      p.*,
+      u."id" as "authorId",
+      u."username",
+      pr."display_name",
+      pr."profile_picture",
+      COUNT(pl."post_id") AS "likeCount"
+    FROM "Post" p
+    JOIN "User" u ON u."id" = p."author_id"
+    LEFT JOIN "Profile" pr ON pr."id" = u."id"
+    LEFT JOIN "PostLiked" pl ON pl."post_id" = p."id"
+    WHERE p."author_id" = ${author_id}
+    GROUP BY p."id", u."id", pr."display_name", pr."profile_picture"
+    ORDER BY p."createdAt" DESC
+  `;
 
-  return posts;
+  return posts.map((post) => ({
+    ...post,
+    likeCount: Number(post.likeCount),
+  }));
 }
 
-export async function getPostsFromFollowing(user_id: string) {
-  const posts = await db.$queryRawUnsafe(
-    `
-    SELECT p.*
-    FROM "Post" p
-    JOIN "Following" f ON p."author_id" = f."followedId"
-    WHERE f."followerId" = $1
-    ORDER BY p."createdAt" DESC
-  `,
-    user_id
-  );
+// Delete a post only if the user is the author
+export async function deletePost(postId: string, userId: string) {
+  const [post]: any = await db.$queryRaw`
+    DELETE FROM "Post"
+    WHERE "id" = ${postId} AND "author_id" = ${userId}
+    RETURNING *
+  `;
+  return post;
+}
 
-  return posts;
+export async function getPostsFromFollowing(userId: string) {
+  const posts: any[] = await db.$queryRaw`
+    SELECT 
+      p.*,
+      u."id" AS "authorId",
+      u."username",
+      pr."display_name",
+      pr."profile_picture",
+      COALESCE(l."likeCount", 0) AS "likeCount"
+    FROM "Following" f
+    JOIN "User" u ON u."id" = f."followedId"
+    JOIN "Post" p ON p."author_id" = u."id"
+    LEFT JOIN "Profile" pr ON pr."id" = u."id"
+    LEFT JOIN (
+      SELECT "post_id", COUNT(*) AS "likeCount"
+      FROM "PostLiked"
+      GROUP BY "post_id"
+    ) l ON l."post_id" = p."id"
+    WHERE f."followerId" = ${userId}
+    ORDER BY p."createdAt" DESC
+  `;
+
+  console.log("psots", posts);
+
+  return posts.map((post) => ({
+    ...post,
+    likeCount: Number(post.likeCount),
+  }));
+}
+
+export async function likePost(postId: string, userId: string) {
+  await db.$executeRaw`
+    INSERT INTO "PostLiked" ("post_id", "author_id")
+    VALUES (${postId}, ${userId})
+    ON CONFLICT DO NOTHING
+  `;
+}
+
+export async function unlikePost(postId: string, userId: string) {
+  await db.$executeRaw`
+    DELETE FROM "PostLiked"
+    WHERE "post_id" = ${postId} AND "author_id" = ${userId}
+  `;
+}
+
+export async function getAllPosts(userId: string) {
+  const posts: any[] = await db.$queryRaw`
+    SELECT 
+      p.*,
+      u."id" AS "authorId",
+      u."username",
+      pr."display_name",
+      pr."profile_picture",
+      COALESCE(l."likeCount", 0) AS "likeCount"
+    FROM "Post" p
+    LEFT JOIN "User" u ON u."id" = p."author_id"
+    LEFT JOIN "Profile" pr ON pr."id" = u."id"
+    LEFT JOIN (
+      SELECT "post_id", COUNT(*) AS "likeCount"
+      FROM "PostLiked"
+      GROUP BY "post_id"
+    ) l ON l."post_id" = p."id"
+    ORDER BY p."createdAt" DESC
+  `;
+
+  console.log("posts", posts);
+  return posts.map((post) => ({
+    ...post,
+    likeCount: Number(post.likeCount),
+  }));
 }

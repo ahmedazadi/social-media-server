@@ -3,6 +3,7 @@ import authRouter from "./auth/auth.route";
 import postRouter from "./post/post.route";
 import userRouter from "./user/user.route";
 import commentRouter from "./comment/comment.route";
+
 const router = Router();
 
 router.use("/auth", authRouter);
