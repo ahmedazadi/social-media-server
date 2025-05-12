@@ -3,7 +3,7 @@ import * as postService from "./post.service";
 import db from "@/shared/config/prisma";
 
 export async function postPost(req: Request, res: Response) {
-  const { content } = req.body;
+  const { content, image } = req.body;
 
   if (!content) {
     res.status(400).json({ error: "Content is required" });
@@ -13,7 +13,7 @@ export async function postPost(req: Request, res: Response) {
   const user = (req as any).user;
 
   try {
-    const post = await postService.createPost(content, user.id);
+    const post = await postService.createPost(content, image, user.id);
     res.status(200).json({ data: post });
     return;
   } catch (error: any) {
@@ -39,8 +39,9 @@ export async function deletePost(req: Request, res: Response) {
 }
 
 export async function getPostsByAuthor(req: Request, res: Response) {
+  const user = (req as any).user;
   const authorId = req.params.authorId;
-  const result = await postService.getPostsByAuthor(authorId);
+  const result = await postService.getPostsByAuthor(authorId, user);
   res.status(200).json({ data: result });
   return;
 }
@@ -63,9 +64,10 @@ export async function getPostsFromFollowing(req: Request, res: Response) {
 
 export async function getPostById(req: Request, res: Response) {
   const postId = req.params.postId;
+  const user = (req as any).user;
 
   try {
-    const post = await postService.getPostById(postId);
+    const post = await postService.getPostById(postId, user);
     res.status(200).json({ data: post });
     return;
   } catch (error: any) {

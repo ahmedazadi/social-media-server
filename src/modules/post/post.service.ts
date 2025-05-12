@@ -2,20 +2,24 @@ import db from "@/shared/config/prisma";
 import { randomUUID } from "crypto";
 
 // Create a post
-export async function createPost(content: string, author_id: string) {
+export async function createPost(
+  content: string,
+  image: string,
+  author_id: string
+) {
   const [post]: any = await db.$queryRaw`
     INSERT INTO "Post" (
-      "id", "content", "author_id", "createdAt", "updatedAt", "publicity"
+      "id", "content", "PostImage", "author_id", "createdAt", "updatedAt", "publicity"
     ) VALUES (
-      ${randomUUID()}, ${content}, ${author_id}, NOW(), NOW(), 1
+      ${randomUUID()}, ${content}, ${image}, ${author_id}, NOW(), NOW(), 1
     )
     RETURNING *
   `;
   return post;
 }
 
-// Get post by ID including author info and like count
-export async function getPostById(id: string) {
+// Get post by ID including author info, like count, and whether user liked it
+export async function getPostById(id: string, userId: string) {
   const [post]: any = await db.$queryRaw`
     SELECT 
       p.*,
@@ -23,7 +27,11 @@ export async function getPostById(id: string) {
       u."username",
       pr."display_name",
       pr."profile_picture",
-      COUNT(pl."post_id") AS "likeCount"
+      COUNT(pl."post_id") AS "likeCount",
+      EXISTS (
+        SELECT 1 FROM "PostLiked"
+        WHERE "post_id" = p."id" AND "author_id" = ${userId}
+      ) AS "likedByCurrentUser"
     FROM "Post" p
     JOIN "User" u ON u."id" = p."author_id"
     LEFT JOIN "Profile" pr ON pr."id" = u."id"
@@ -34,13 +42,14 @@ export async function getPostById(id: string) {
 
   if (post) {
     post.likeCount = Number(post.likeCount);
+    post.likedByCurrentUser = Boolean(post.likedByCurrentUser);
   }
 
   return post;
 }
 
 // Get all posts by a specific author including author info and like counts
-export async function getPostsByAuthor(author_id: string) {
+export async function getPostsByAuthor(author_id: string, userId: string) {
   const posts: any[] = await db.$queryRaw`
     SELECT 
       p.*,
@@ -48,19 +57,27 @@ export async function getPostsByAuthor(author_id: string) {
       u."username",
       pr."display_name",
       pr."profile_picture",
-      COUNT(pl."post_id") AS "likeCount"
+      COALESCE(l."likeCount", 0) AS "likeCount",
+      EXISTS (
+        SELECT 1 FROM "PostLiked"
+        WHERE "post_id" = p."id" AND "author_id" = ${userId}
+      ) AS "likedByCurrentUser"
     FROM "Post" p
     JOIN "User" u ON u."id" = p."author_id"
     LEFT JOIN "Profile" pr ON pr."id" = u."id"
-    LEFT JOIN "PostLiked" pl ON pl."post_id" = p."id"
+    LEFT JOIN (
+      SELECT "post_id", COUNT(*) AS "likeCount"
+      FROM "PostLiked"
+      GROUP BY "post_id"
+    ) l ON l."post_id" = p."id"
     WHERE p."author_id" = ${author_id}
-    GROUP BY p."id", u."id", pr."display_name", pr."profile_picture"
     ORDER BY p."createdAt" DESC
   `;
 
   return posts.map((post) => ({
     ...post,
     likeCount: Number(post.likeCount),
+    likedByCurrentUser: Boolean(post.likedByCurrentUser),
   }));
 }
 
@@ -82,7 +99,11 @@ export async function getPostsFromFollowing(userId: string) {
       u."username",
       pr."display_name",
       pr."profile_picture",
-      COALESCE(l."likeCount", 0) AS "likeCount"
+      COALESCE(l."likeCount", 0) AS "likeCount",
+      EXISTS (
+        SELECT 1 FROM "PostLiked"
+        WHERE "post_id" = p."id" AND "author_id" = ${userId}
+      ) AS "likedByCurrentUser"
     FROM "Following" f
     JOIN "User" u ON u."id" = f."followedId"
     JOIN "Post" p ON p."author_id" = u."id"
@@ -96,11 +117,10 @@ export async function getPostsFromFollowing(userId: string) {
     ORDER BY p."createdAt" DESC
   `;
 
-  console.log("psots", posts);
-
   return posts.map((post) => ({
     ...post,
     likeCount: Number(post.likeCount),
+    likedByCurrentUser: Boolean(post.likedByCurrentUser),
   }));
 }
 
@@ -127,7 +147,11 @@ export async function getAllPosts(userId: string) {
       u."username",
       pr."display_name",
       pr."profile_picture",
-      COALESCE(l."likeCount", 0) AS "likeCount"
+      COALESCE(l."likeCount", 0) AS "likeCount",
+      EXISTS (
+        SELECT 1 FROM "PostLiked"
+        WHERE "post_id" = p."id" AND "author_id" = ${userId}
+      ) AS "likedByCurrentUser"
     FROM "Post" p
     LEFT JOIN "User" u ON u."id" = p."author_id"
     LEFT JOIN "Profile" pr ON pr."id" = u."id"
@@ -139,9 +163,9 @@ export async function getAllPosts(userId: string) {
     ORDER BY p."createdAt" DESC
   `;
 
-  console.log("posts", posts);
   return posts.map((post) => ({
     ...post,
     likeCount: Number(post.likeCount),
+    likedByCurrentUser: Boolean(post.likedByCurrentUser),
   }));
 }

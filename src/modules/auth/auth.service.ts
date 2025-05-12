@@ -8,12 +8,13 @@ import env from "@/shared/config/env";
 export async function handleLogin(req: Request, res: Response) {
   const { email, password } = req.body;
 
+  console.log("email", email);
+  console.log("password", password);
+
   if (!email || !password) {
     res.status(400).json({ error: "please provide email and password" });
     return;
   }
-
-  console.log("validated");
 
   // check if the user exists
   let user: User | null = null;
