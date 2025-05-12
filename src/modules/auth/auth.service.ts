@@ -19,7 +19,7 @@ export async function handleLogin(req: Request, res: Response) {
   let user: User | null = null;
   try {
     const [result]: any = await db.$queryRaw`
-    SELECT * FROM "User" WHERE "email" = ${email}
+    SELECT * FROM "User" WHERE "email" = ${email.toLowerCase()}
   `;
     user = result;
   } catch (error) {
@@ -73,7 +73,7 @@ export async function handleRegister(req: Request, res: Response) {
         "createdAt", "updatedAt",
         "email_verified", "phone_verified", "two_factor_enabled", "status"
       ) VALUES (
-        gen_random_uuid(), ${email}, ${hashedPassword}, ${username},
+        gen_random_uuid(), ${email.toLowerCase()}, ${hashedPassword}, ${username},
         NOW(), NOW(),
         false, false, false, 1
       )
