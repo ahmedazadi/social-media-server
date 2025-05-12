@@ -20,9 +20,11 @@ export async function getCommentsByPostId(postId: string) {
     SELECT 
       c.*, 
       u."id" as "userId", 
-      u."username" 
+      u."username", 
+      pr."profile_picture"
     FROM "Comment" c
     JOIN "User" u ON u."id" = c."user_id"
+    LEFT JOIN "Profile" pr ON pr."id" = u."id"
     WHERE c."post_id" = ${postId}
     ORDER BY c."createdAt" ASC
   `;

@@ -18,7 +18,7 @@ export async function createPost(
   return post;
 }
 
-// Get post by ID including author info, like count, and whether user liked it
+// Get post by ID including author info, like count, comment count, and whether user liked it
 export async function getPostById(id: string, userId: string) {
   const [post]: any = await db.$queryRaw`
     SELECT 
@@ -27,7 +27,8 @@ export async function getPostById(id: string, userId: string) {
       u."username",
       pr."display_name",
       pr."profile_picture",
-      COUNT(pl."post_id") AS "likeCount",
+      COUNT(DISTINCT pl."post_id") AS "likeCount",
+      COUNT(DISTINCT c."id") AS "commentCount",
       EXISTS (
         SELECT 1 FROM "PostLiked"
         WHERE "post_id" = p."id" AND "author_id" = ${userId}
@@ -36,19 +37,21 @@ export async function getPostById(id: string, userId: string) {
     JOIN "User" u ON u."id" = p."author_id"
     LEFT JOIN "Profile" pr ON pr."id" = u."id"
     LEFT JOIN "PostLiked" pl ON pl."post_id" = p."id"
+    LEFT JOIN "Comment" c ON c."post_id" = p."id"
     WHERE p."id" = ${id}
     GROUP BY p."id", u."id", pr."display_name", pr."profile_picture"
   `;
 
   if (post) {
     post.likeCount = Number(post.likeCount);
+    post.commentCount = Number(post.commentCount);
     post.likedByCurrentUser = Boolean(post.likedByCurrentUser);
   }
 
   return post;
 }
 
-// Get all posts by a specific author including author info and like counts
+// Get all posts by a specific author including author info and like/comment counts
 export async function getPostsByAuthor(author_id: string, userId: string) {
   const posts: any[] = await db.$queryRaw`
     SELECT 
@@ -58,6 +61,7 @@ export async function getPostsByAuthor(author_id: string, userId: string) {
       pr."display_name",
       pr."profile_picture",
       COALESCE(l."likeCount", 0) AS "likeCount",
+      COALESCE(c."commentCount", 0) AS "commentCount",
       EXISTS (
         SELECT 1 FROM "PostLiked"
         WHERE "post_id" = p."id" AND "author_id" = ${userId}
@@ -70,6 +74,11 @@ export async function getPostsByAuthor(author_id: string, userId: string) {
       FROM "PostLiked"
       GROUP BY "post_id"
     ) l ON l."post_id" = p."id"
+    LEFT JOIN (
+      SELECT "post_id", COUNT(*) AS "commentCount"
+      FROM "Comment"
+      GROUP BY "post_id"
+    ) c ON c."post_id" = p."id"
     WHERE p."author_id" = ${author_id}
     ORDER BY p."createdAt" DESC
   `;
@@ -77,6 +86,7 @@ export async function getPostsByAuthor(author_id: string, userId: string) {
   return posts.map((post) => ({
     ...post,
     likeCount: Number(post.likeCount),
+    commentCount: Number(post.commentCount),
     likedByCurrentUser: Boolean(post.likedByCurrentUser),
   }));
 }
@@ -100,6 +110,7 @@ export async function getPostsFromFollowing(userId: string) {
       pr."display_name",
       pr."profile_picture",
       COALESCE(l."likeCount", 0) AS "likeCount",
+      COALESCE(c."commentCount", 0) AS "commentCount",
       EXISTS (
         SELECT 1 FROM "PostLiked"
         WHERE "post_id" = p."id" AND "author_id" = ${userId}
@@ -113,6 +124,11 @@ export async function getPostsFromFollowing(userId: string) {
       FROM "PostLiked"
       GROUP BY "post_id"
     ) l ON l."post_id" = p."id"
+    LEFT JOIN (
+      SELECT "post_id", COUNT(*) AS "commentCount"
+      FROM "Comment"
+      GROUP BY "post_id"
+    ) c ON c."post_id" = p."id"
     WHERE f."followerId" = ${userId}
     ORDER BY p."createdAt" DESC
   `;
@@ -120,6 +136,7 @@ export async function getPostsFromFollowing(userId: string) {
   return posts.map((post) => ({
     ...post,
     likeCount: Number(post.likeCount),
+    commentCount: Number(post.commentCount),
     likedByCurrentUser: Boolean(post.likedByCurrentUser),
   }));
 }
@@ -148,6 +165,7 @@ export async function getAllPosts(userId: string) {
       pr."display_name",
       pr."profile_picture",
       COALESCE(l."likeCount", 0) AS "likeCount",
+      COALESCE(c."commentCount", 0) AS "commentCount",
       EXISTS (
         SELECT 1 FROM "PostLiked"
         WHERE "post_id" = p."id" AND "author_id" = ${userId}
@@ -160,12 +178,18 @@ export async function getAllPosts(userId: string) {
       FROM "PostLiked"
       GROUP BY "post_id"
     ) l ON l."post_id" = p."id"
+    LEFT JOIN (
+      SELECT "post_id", COUNT(*) AS "commentCount"
+      FROM "Comment"
+      GROUP BY "post_id"
+    ) c ON c."post_id" = p."id"
     ORDER BY p."createdAt" DESC
   `;
 
   return posts.map((post) => ({
     ...post,
     likeCount: Number(post.likeCount),
+    commentCount: Number(post.commentCount),
     likedByCurrentUser: Boolean(post.likedByCurrentUser),
   }));
 }
