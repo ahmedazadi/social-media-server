@@ -74,7 +74,7 @@ export async function postProfile({
   profilePicture: string;
   bio: string;
   gender: string;
-  dateOfBirth: string;
+  dateOfBirth: Date;
 }) {
   const result = await db.$executeRaw`
   INSERT INTO "Profile" (

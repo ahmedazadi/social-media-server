@@ -53,7 +53,6 @@ export async function getPostsByAuthor(req: Request, res: Response) {
 }
 
 export async function getPostsFromFollowing(req: Request, res: Response) {
-  console.log("getPostsFromFollowing");
   const user = (req as any).user;
 
   try {

@@ -109,7 +109,6 @@ export async function postProfile(req: Request, res: Response) {
     res.status(400).json({ message: "Invalid date format" });
     return;
   }
-
   try {
     const result = await userService.postProfile({
       id: user.id,
@@ -117,7 +116,7 @@ export async function postProfile(req: Request, res: Response) {
       profilePicture,
       bio,
       gender,
-      dateOfBirth: dateOfBirthValidated.toISOString(),
+      dateOfBirth: dateOfBirthValidated,
     });
     res.status(201).json({ data: result });
     return;
