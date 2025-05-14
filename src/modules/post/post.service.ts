@@ -53,7 +53,11 @@ export async function getPostById(id: string, userId: string) {
 
 // Get all posts by a specific author including author info and like/comment counts
 export async function getPostsByAuthor(author_id: string, userId: string) {
-  const posts: any[] = await db.$queryRaw`
+  console.log("userId:", typeof userId, userId);
+  console.log("author_id:", typeof author_id, author_id);
+
+  const posts: any[] = await db.$queryRawUnsafe(
+    `
     SELECT 
       p.*,
       u."id" as "authorId",
@@ -64,7 +68,7 @@ export async function getPostsByAuthor(author_id: string, userId: string) {
       COALESCE(c."commentCount", 0) AS "commentCount",
       EXISTS (
         SELECT 1 FROM "PostLiked"
-        WHERE "post_id" = p."id" AND "author_id" = ${userId}
+        WHERE "post_id" = p."id" AND "author_id" = $1
       ) AS "likedByCurrentUser"
     FROM "Post" p
     JOIN "User" u ON u."id" = p."author_id"
@@ -79,9 +83,12 @@ export async function getPostsByAuthor(author_id: string, userId: string) {
       FROM "Comment"
       GROUP BY "post_id"
     ) c ON c."post_id" = p."id"
-    WHERE p."author_id" = ${author_id}
+    WHERE p."author_id" = $2
     ORDER BY p."createdAt" DESC
-  `;
+  `,
+    userId,
+    author_id
+  ); // Note the order of params
 
   return posts.map((post) => ({
     ...post,

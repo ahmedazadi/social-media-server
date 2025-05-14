@@ -131,8 +131,26 @@ export async function postProfile(req: Request, res: Response) {
 export async function getProfile(req: Request, res: Response) {
   const user = (req as any).user;
 
+  console.log("here here");
+
   try {
     const result = await userService.getProfile({ id: user.id });
+    res.status(200).json({ data: result });
+    return;
+  } catch (error: any) {
+    console.log(error.message);
+    res.status(500).json({ message: "Internal server error" });
+    return;
+  }
+}
+
+export async function getTheirProfile(req: Request, res: Response) {
+  const user = (req as any).user;
+  const id = req.params.id;
+
+  try {
+    const result = await userService.getTheirProfile({ myId: user.id, id: id });
+    console.log({ result });
     res.status(200).json({ data: result });
     return;
   } catch (error: any) {

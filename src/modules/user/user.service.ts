@@ -89,29 +89,98 @@ export async function postProfile({
 
 export async function getProfile({ id }: { id: string }) {
   const [result]: any = await db.$queryRaw`
-  SELECT 
-    u."id",
-    u."username",
-    u."email",
-    u."email_verified",
-    u."phone",
-    u."phone_verified",
-    u."two_factor_enabled",
-    u."status",
-    u."createdAt",
-    u."updatedAt",
-    p."display_name",
-    p."profile_picture",
-    p."bio",
-    p."gender",
-    p."date_of_birth"
-  FROM "User" u
-  LEFT JOIN "Profile" p ON u."id" = p."id"
-  WHERE u."id" = ${id}
-`;
-  return result;
+    SELECT 
+      u."id",
+      u."username",
+      u."email",
+      u."email_verified",
+      u."phone",
+      u."phone_verified",
+      u."two_factor_enabled",
+      u."status",
+      u."createdAt",
+      u."updatedAt",
+      p."display_name",
+      p."profile_picture",
+      p."bio",
+      p."gender",
+      p."date_of_birth",
+
+      -- Count of followers
+      (SELECT COUNT(*) FROM "Following" f WHERE f."followedId" = u."id") AS "followersCount",
+      
+      -- Count of following
+      (SELECT COUNT(*) FROM "Following" f WHERE f."followerId" = u."id") AS "followingCount",
+
+      -- Count of posts
+      (SELECT COUNT(*) FROM "Post" po WHERE po."author_id" = u."id") AS "postsCount"
+
+    FROM "User" u
+    LEFT JOIN "Profile" p ON u."id" = p."id"
+    WHERE u."id" = ${id}
+  `;
+
+  return {
+    ...result,
+    followersCount: Number(result.followersCount),
+    followingCount: Number(result.followingCount),
+    postsCount: Number(result.postsCount),
+  };
 }
 
+export async function getTheirProfile({
+  myId,
+  id,
+}: {
+  myId: string;
+  id: string;
+}) {
+  const [result]: any = await db.$queryRaw`
+    SELECT 
+      u."id",
+      u."username",
+      u."email",
+      u."email_verified",
+      u."phone",
+      u."phone_verified",
+      u."two_factor_enabled",
+      u."status",
+      u."createdAt",
+      u."updatedAt",
+      p."display_name",
+      p."profile_picture",
+      p."bio",
+      p."gender",
+      p."date_of_birth",
+
+      -- Count of followers
+      (SELECT COUNT(*) FROM "Following" f WHERE f."followedId" = u."id") AS "followersCount",
+      
+      -- Count of following
+      (SELECT COUNT(*) FROM "Following" f WHERE f."followerId" = u."id") AS "followingCount",
+
+      -- Count of posts
+      (SELECT COUNT(*) FROM "Post" po WHERE po."author_id" = u."id") AS "postsCount",
+
+      -- Whether current user follows this profile
+      EXISTS (
+        SELECT 1 FROM "Following" f
+        WHERE f."followerId" = ${myId} AND f."followedId" = u."id"
+      ) AS "isFollowing"
+
+    FROM "User" u
+    LEFT JOIN "Profile" p ON u."id" = p."id"
+    WHERE u."id" = ${id}
+  `;
+
+  return {
+    ...result,
+    followersCount: Number(result.followersCount),
+    followingCount: Number(result.followingCount),
+    postsCount: Number(result.postsCount),
+    isFollowing: Boolean(result.isFollowing),
+  };
+}
 export async function putProfile({
   id,
   displayName,

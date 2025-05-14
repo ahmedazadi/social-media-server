@@ -41,9 +41,15 @@ export async function deletePost(req: Request, res: Response) {
 export async function getPostsByAuthor(req: Request, res: Response) {
   const user = (req as any).user;
   const authorId = req.params.authorId;
-  const result = await postService.getPostsByAuthor(authorId, user);
-  res.status(200).json({ data: result });
-  return;
+  try {
+    const result = await postService.getPostsByAuthor(authorId, user.id);
+    res.status(200).json({ data: result });
+    return;
+  } catch (error: any) {
+    console.error("error fetching post by author", error.message);
+    res.status(500).json({ message: "Internal server error" });
+    return;
+  }
 }
 
 export async function getPostsFromFollowing(req: Request, res: Response) {

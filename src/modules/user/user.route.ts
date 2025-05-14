@@ -28,11 +28,14 @@ router.get(
   userController.getFollowing
 );
 
-// post profile
-router.post("/profile", authenticateToken, userController.postProfile);
+// get user profile
+router.get("/profile/:id", authenticateToken, userController.getTheirProfile);
 
 // get user profile
 router.get("/profile", authenticateToken, userController.getProfile);
+
+// post profile
+router.post("/profile", authenticateToken, userController.postProfile);
 
 // edit user profiel
 router.put("/profile", authenticateToken, userController.putProfile);
